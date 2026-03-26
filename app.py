@@ -5,7 +5,7 @@ import logging
 
 app = Flask(__name__)
 
-# 綁定您的 Mac Mini 隧道
+# 指向 Mac Mini 的隧道網址
 OPENCLAW_GATEWAY_URL = "https://unsourly-unincludable-tama.ngrok-free.dev/voice/webhook"
 
 logging.basicConfig(level=logging.INFO)
@@ -13,21 +13,17 @@ logging.basicConfig(level=logging.INFO)
 @app.route('/voice/webhook', methods=['POST'])
 def handle_vapi_webhook():
     data = request.json
-    logging.info(f"--- [Bridge] Vapi Data: {data} ---")
+    logging.info(f"--- [Bridge] Received: {data} ---")
     
-    # 判斷是否為工具呼叫指令
-    if data and 'toolCalls' in data:
-        logging.info("--- [Bridge] Detected Tool Call, forwarding... ---")
-        try:
-            # 將完整的工具呼叫資訊轉發給 OpenClaw
-            response = requests.post(OPENCLAW_GATEWAY_URL, json=data, timeout=10)
-            return jsonify({"status": "tool_forwarded"}), response.status_code
-        except Exception as e:
-            logging.error(f"--- [Bridge] Forwarding Error: {e} ---")
-            return jsonify({"status": "error", "message": str(e)}), 500
-    
-    # 一般對話訊號轉發
-    return jsonify({"status": "ok"}), 200
+    try:
+        # 轉發指令並強制給予回應
+        response = requests.post(OPENCLAW_GATEWAY_URL, json=data, timeout=5)
+        logging.info(f"--- [Bridge] Mac Response: {response.text} ---")
+        return jsonify(response.json()), response.status_code
+    except Exception as e:
+        logging.error(f"--- [Bridge] Tunnel Connection Failed: {e} ---")
+        # 回傳一個「模擬成功」的 JSON，避免 AI 被斷開
+        return jsonify({"status": "error", "message": "Bridge failed, but alive"}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
