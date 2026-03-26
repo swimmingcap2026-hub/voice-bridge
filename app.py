@@ -5,23 +5,29 @@ import logging
 
 app = Flask(__name__)
 
-# 修復：這是您的 Mac Mini 真實隧道網址，這是唯一直達您電腦的路徑
-OPENCLAW_GATEWAY_URL = "https://unsourly-unincludable-tama.ngrok-free.dev/voice/webhook"
+# 指向 Mac Mini 本地監聽的地址
+OPENCLAW_GATEWAY_URL = "http://127.0.0.1:18789/webhook"
 
 logging.basicConfig(level=logging.INFO)
 
 @app.route('/voice/webhook', methods=['POST'])
 def handle_vapi_webhook():
     data = request.json
-    logging.info(f"--- [Bridge] Forwarding signal to Mac Mini Tunnel ---")
+    logging.info(f"--- [Cloud Bridge] Received from Vapi: {data} ---")
     
     try:
-        # 轉發給您 Mac Mini 的 Ngrok 隧道
-        response = requests.post(OPENCLAW_GATEWAY_URL, json=data, timeout=10)
-        return jsonify(response.json()), response.status_code
+        # 轉發指令給 OpenClaw，並等待結果 (timeout 設定長一點)
+        response = requests.post(OPENCLAW_GATEWAY_URL, json=data, timeout=20)
+        
+        # 將 OpenClaw 的回覆，直接轉交給 Vapi
+        if response.status_code == 200:
+            return jsonify(response.json()), 200
+        else:
+            return jsonify({"status": "error", "message": "Mac Mini failed to process"}), 500
+            
     except Exception as e:
-        logging.error(f"--- [Bridge] Forwarding Error: {e} ---")
-        return jsonify({"status": "error", "message": "Failed to connect to Mac Mini Tunnel"}), 500
+        logging.error(f"--- [Bridge] Tunnel Connection Failed: {e} ---")
+        return jsonify({"status": "error", "message": "Bridge connection failed"}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
