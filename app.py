@@ -6,7 +6,7 @@ import logging
 app = Flask(__name__)
 
 # 綁定您的 Mac Mini 隧道
-OPENCLAW_GATEWAY_URL = "http://127.0.0.1:18789/webhook"
+OPENCLAW_GATEWAY_URL = "https://unsourly-unincludable-tama.ngrok-free.dev/voice/webhook"
 
 logging.basicConfig(level=logging.INFO)
 
