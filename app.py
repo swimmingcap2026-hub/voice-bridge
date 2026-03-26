@@ -5,24 +5,30 @@ import logging
 
 app = Flask(__name__)
 
-# 這是修正後的關鍵：指向 Mac Mini 本地語音插件真正監聽的 58888 埠口
-OPENCLAW_VOICE_PLUGIN_URL = "http://127.0.0.1:58888/voice/webhook"
+# 指向您 Mac 的真實 Ngrok 隧道
+OPENCLAW_GATEWAY_URL = "https://unsourly-unincludable-tama.ngrok-free.dev/voice/webhook"
 
 logging.basicConfig(level=logging.INFO)
 
 @app.route('/voice/webhook', methods=['POST'])
 def handle_vapi_webhook():
     data = request.json
-    logging.info(f"--- [Bridge] Forwarding signal to Mac Mini Port 58888 ---")
+    logging.info(f"--- [Bridge] Forwarding signal to Mac ---")
     
     try:
-        # 轉發請求到 Mac Mini
-        response = requests.post(OPENCLAW_VOICE_PLUGIN_URL, json=data, timeout=5)
-        # 確保回傳正確的 JSON 給 Vapi
-        return jsonify(response.json()), response.status_code
+        # 轉發請求
+        response = requests.post(OPENCLAW_GATEWAY_URL, json=data, timeout=10)
+        
+        # 關鍵除錯：如果無法解析 JSON，印出原始內容
+        try:
+            return jsonify(response.json()), response.status_code
+        except ValueError:
+            logging.error(f"--- [Bridge] Mac returned non-JSON: {response.text} ---")
+            return jsonify({"status": "error", "message": "Mac returned malformed data"}), 500
+            
     except Exception as e:
-        logging.error(f"--- [Bridge] Forwarding Error: {e} ---")
-        return jsonify({"status": "error", "message": "Failed to connect to Mac Mini Port 58888"}), 500
+        logging.error(f"--- [Bridge] Connection Error: {e} ---")
+        return jsonify({"status": "error", "message": "Bridge connection failed"}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
