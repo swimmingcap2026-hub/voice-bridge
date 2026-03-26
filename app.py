@@ -4,27 +4,23 @@ import requests
 
 app = Flask(__name__)
 
-# 確保這就是您 Mac Mini 的真實 Ngrok 公開隧道網址
-OPENCLAW_GATEWAY_URL = "https://unsourly-unincludable-tama.ngrok-free.dev/voice/webhook"
+# 修正：精確指向語音插件監聽的本地埠口 (58888)
+# 當您剛剛重啟服務時，OpenClaw 自動為它分配了這個埠號
+OPENCLAW_GATEWAY_URL = "http://127.0.0.1:58888/voice/webhook"
 
 @app.route('/voice/webhook', methods=['POST'])
 def handle_vapi_webhook():
     data = request.json
-    print(f"Bridge received signal: {data}")
+    print(f"--- 雲端橋樑收到訊號並轉發至 Mac Mini: 58888 ---")
     
+    # 轉發訊號給 OpenClaw Gateway
     try:
-        # 轉發請求到 Mac Mini
         response = requests.post(OPENCLAW_GATEWAY_URL, json=data, timeout=10)
-        
-        # 如果 Mac 回傳 JSON，我們就回傳 JSON；如果 Mac 回傳空值，我們回傳一個預設成功
-        if response.text.strip():
-            return jsonify(response.json()), response.status_code
-        else:
-            return jsonify({"status": "ok", "message": "Mac Mini received signal"}), 200
-            
+        return jsonify(response.json()), response.status_code
     except Exception as e:
-        print(f"Error forwarding to OpenClaw Mac: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        print(f"--- 轉發失敗: {e} ---")
+        return jsonify({"status": "error", "message": "Failed to connect to Mac Mini Tunnel"}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
